@@ -40,8 +40,8 @@ function createElement(){
     newCanvasElem.setAttribute('width', config.display.width * config.display.superSample);
     newCanvasElem.setAttribute('height', config.display.height * config.display.superSample);
     newCanvasElem.style.setProperty('position', 'fixed');
-    newCanvasElem.style.setProperty('width', config.display.width);
-    newCanvasElem.style.setProperty('height', config.display.height);
+    newCanvasElem.style.setProperty('width', config.display.width + 'px');
+    newCanvasElem.style.setProperty('height', config.display.height + 'px');
     newCanvasElem.style.setProperty('opacity', config.react.opacityDefault);
     newCanvasElem.style.setProperty(config.display.position, config.display.hOffset + 'px');
     newCanvasElem.style.setProperty('bottom', config.display.vOffset + 'px');

@@ -30,9 +30,15 @@ export function cModel()
     this.modelHomeDir = "";
     this.modelSetting = null;
     this.tmpMatrix = [];
+    this.initialOrient = null;
+    this.lastOrient = null;
+    this.orient = null;
+    this.orientOffset = { alpha: 0, beta: 0, gamma: 0 };
 }
 
 cModel.prototype = new L2DBaseModel();
+
+cModel.prototype.ROTATION_SEGMENTATION = 30
 
 
 cModel.prototype.load = function(gl, modelSettingPath, callback)
@@ -218,6 +224,7 @@ cModel.prototype.update = function()
 {
     // console.log("--> cModel.update()");
 
+
     if(this.live2DModel == null)
     {
         if (cDefine.DEBUG_LOG) console.error("Failed to update.");
@@ -232,7 +239,6 @@ cModel.prototype.update = function()
 
     if (this.mainMotionManager.isFinished())
     {
-
         this.startRandomMotion(cDefine.MOTION_GROUP_IDLE, cDefine.PRIORITY_IDLE);
     }
 
@@ -244,8 +250,7 @@ cModel.prototype.update = function()
 
 
     var update = this.mainMotionManager.updateParam(this.live2DModel);
-    if (!update) {
-
+    if (!update || this.isDefaultIdle) {
         if(this.eyeBlink != null) {
             this.eyeBlink.updateParam(this.live2DModel);
         }
@@ -256,7 +261,6 @@ cModel.prototype.update = function()
 
     //-----------------------------------------------------------------
 
-
     if (this.expressionManager != null &&
         this.expressions != null &&
         !this.expressionManager.isFinished())
@@ -264,33 +268,57 @@ cModel.prototype.update = function()
         this.expressionManager.updateParam(this.live2DModel);
     }
 
+    //-----------------------------------------------------------------
 
+    if (this.isDefaultIdle) {
+        if (!this.weight) {
+            this.weight = 1
+        }
+        else if (this.weight < 25) {
+            this.weight++
+        }
+    }
+    else {
+        if (this.weight >= 1) {
+            this.weight--
+        }
+        else {
+            this.weight = 0
+        }
+    }
 
-    this.live2DModel.addToParamFloat("PARAM_ANGLE_X", this.dragX * 30, 1);
-    this.live2DModel.addToParamFloat("PARAM_ANGLE_Y", this.dragY * 30, 1);
-    this.live2DModel.addToParamFloat("PARAM_ANGLE_Z", (this.dragX * this.dragY) * -30, 1);
+    const dragWeight = this.weight * 0.04
 
+    if (this.orient) {
+        this.live2DModel.addToParamFloat('PARAM_ANGLE_X', -this.orientOffset.gamma, dragWeight)
+        this.live2DModel.addToParamFloat('PARAM_ANGLE_Y', this.orientOffset.beta, dragWeight)
+        // this.live2DModel.addToParamFloat('PARAM_ANGLE_Z', this.orientOffset.gamma * this.orientOffset.beta, 1)
+        this.live2DModel.addToParamFloat('PARAM_BODY_ANGLE_X', -this.orientOffset.gamma / 30 * 8, dragWeight)
+        // this.live2DModel.addToParamFloat('PARAM_EYE_BALL_X', this.orientOffset.gamma / 30, 1)
+        // this.live2DModel.addToParamFloat('PARAM_EYE_BALL_Y', -this.orientOffset.beta / 30, 1)
+    }
 
+    this.live2DModel.addToParamFloat("PARAM_ANGLE_X", this.dragX * 32, Math.min(0.4 + dragWeight, 1));
+    this.live2DModel.addToParamFloat("PARAM_ANGLE_Y", this.dragY * 28, Math.min(0.2 + dragWeight, 1));
+    this.live2DModel.addToParamFloat("PARAM_ANGLE_Z", (this.dragX * this.dragY) * -30, dragWeight);
+    this.live2DModel.addToParamFloat("PARAM_BODY_ANGLE_X", this.dragX * 8, Math.min(0.1 + dragWeight, 1));
+    this.live2DModel.addToParamFloat("PARAM_EYE_BALL_X", this.dragX, dragWeight);
+    this.live2DModel.addToParamFloat("PARAM_EYE_BALL_Y", this.dragY, dragWeight);
 
-    this.live2DModel.addToParamFloat("PARAM_BODY_ANGLE_X", this.dragX*10, 1);
-
-
-
-    this.live2DModel.addToParamFloat("PARAM_EYE_BALL_X", this.dragX, 1);
-    this.live2DModel.addToParamFloat("PARAM_EYE_BALL_Y", this.dragY, 1);
-
-
-
+    const autoWeight = this.weight * 0.02
     this.live2DModel.addToParamFloat("PARAM_ANGLE_X",
-                                     Number((15 * Math.sin(t / 6.5345))), 0.5);
+        Number((15 * Math.sin(t / 6.5345))), autoWeight);
     this.live2DModel.addToParamFloat("PARAM_ANGLE_Y",
-                                     Number((8 * Math.sin(t / 3.5345))), 0.5);
+        Number((8 * Math.sin(t / 3.5345))), autoWeight);
     this.live2DModel.addToParamFloat("PARAM_ANGLE_Z",
-                                     Number((10 * Math.sin(t / 5.5345))), 0.5);
+        Number((10 * Math.sin(t / 5.5345))), autoWeight);
     this.live2DModel.addToParamFloat("PARAM_BODY_ANGLE_X",
-                                     Number((4 * Math.sin(t / 15.5345))), 0.5);
-    this.live2DModel.setParamFloat("PARAM_BREATH",
-                                   Number((0.5 + 0.5 * Math.sin(t / 3.2345))), 1);
+        Number((4 * Math.sin(t / 15.5345))), autoWeight);
+    // this.live2DModel.setParamFloat("PARAM_BREATH",
+    //     Number((0.5 + 0.5 * Math.sin(t / 3.2345))), 1);
+
+
+    //-----------------------------------------------------------------
 
 
     if (this.physics != null)
@@ -317,6 +345,10 @@ cModel.prototype.update = function()
 
 cModel.prototype.setRandomExpression = function()
 {
+    if (!this.isDefaultIdle && !this.mainMotionManager.isFinished()) {
+        return
+    }
+
     var tmp = [];
     for (var name in this.expressions)
     {
@@ -332,8 +364,19 @@ cModel.prototype.setRandomExpression = function()
 
 cModel.prototype.startRandomMotion = function(name, priority)
 {
-    var max = this.modelSetting.getMotionNum(name);
-    var no = parseInt(Math.random() * max);
+    const max = this.modelSetting.getMotionNum(name);
+
+    const no = (() => {
+        switch (name) {
+            case cDefine.MOTION_GROUP_IDLE:
+                return !this.isDefaultIdle ? 0 : parseInt(Math.random() * max)
+            case cDefine.MOTION_GROUP_TAP_BODY:
+            default:
+                this.expressionManager.startMotion(this.expressions['f01.exp.json'], false)
+                return parseInt(Math.random() * max)
+        }
+    })()
+    
     this.startMotion(name, no, priority);
 }
 
@@ -347,8 +390,8 @@ cModel.prototype.startMotion = function(name, no, priority)
 
     if (motionName == null || motionName == "")
     {
-        if (cDefine.DEBUG_LOG)
-            console.error("Failed to motion.");
+        // if (cDefine.DEBUG_LOG)
+        //     console.error("Failed to motion.");
         return;
     }
 
@@ -368,9 +411,11 @@ cModel.prototype.startMotion = function(name, no, priority)
 
     if (this.motions[name] == null)
     {
+        this.currentMotionGroup = name
+        this.isDefaultIdle = name === cDefine.MOTION_GROUP_IDLE && no === 0
+
         this.loadMotion(null, this.modelHomeDir + motionName, function(mtn) {
             motion = mtn;
-
 
             thisRef.setFadeInFadeOut(name, no, priority, motion);
 
@@ -466,4 +511,36 @@ cModel.prototype.hitTest = function(id, testX, testY)
     }
 
     return false;
+}
+
+cModel.prototype.setRotationRate = function (rate) {
+    this.rotationRate = rate
+}
+
+cModel.prototype.setOrient = function (alpha, beta, gamma) {
+    // this.timeout && clearTimeout(this.timeout)
+
+    if (!this.initialOrient) {
+        this.initialOrient = { alpha, beta, gamma }
+    }
+
+    this.lastOrient = this.orient ? { ...this.orient } : { ...this.initialOrient }
+    this.orient = { alpha, beta, gamma }
+
+    const diff = {
+        alpha: alpha - this.lastOrient.alpha,
+        beta: beta - this.lastOrient.beta,
+        gamma: gamma - this.lastOrient.gamma
+    }
+    const rate = {
+        alpha: diff.alpha > 180 ? diff.alpha - 360 : (diff.alpha < -180 ? diff.alpha + 360 : diff.alpha),
+        beta: diff.beta > 180 ? diff.beta - 360 : (diff.beta < -180 ? diff.beta + 360 : diff.beta),
+        gamma: diff.gamma > 90 ? diff.gamma - 180 : (diff.gamma < -90 ? diff.gamma + 180 : diff.gamma)
+    }
+
+    this.orientOffset = {
+        alpha: this.orientOffset.alpha + rate.alpha,
+        beta: this.orientOffset.beta + rate.beta,
+        gamma: this.orientOffset.gamma + rate.gamma
+    }
 }
