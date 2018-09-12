@@ -70,7 +70,25 @@ cManager.prototype.setDrag = function (x, y) {
   for (var i = 0; i < this.models.length; i++) {
     this.models[i].setDrag(x, y);
   }
-}
+};
+
+// cManager.prototype.setAccel = function (x, y, z) {
+//   for (var i = 0; i < this.models.length; i++) {
+//     this.models[i].setAccel(x, y, z)
+//   }
+// }
+
+cManager.prototype.setRotationRate = function (rate) {
+  for (var i = 0; i < this.models.length; i++) {
+    this.models[i].setRotationRate(rate);
+  }
+};
+
+cManager.prototype.setOrient = function (alpha, beta, gamma) {
+  for (var i = 0; i < this.models.length; i++) {
+    this.models[i].setOrient(alpha, beta, gamma);
+  }
+};
 
 cManager.prototype.tapEvent = function (x, y) {
   if (cDefine.DEBUG_LOG)
@@ -83,6 +101,10 @@ cManager.prototype.tapEvent = function (x, y) {
       if (cDefine.DEBUG_LOG)
         console.log("Tap face.");
 
+      // Math.random() < 0.5
+      //   ? this.models[i].setRandomExpression()
+      //   : this.models[i].startRandomMotion(cDefine.MOTION_GROUP_TAP_BODY,
+      //     cDefine.PRIORITY_NORMAL);
       this.models[i].setRandomExpression();
     }
     else if (this.models[i].hitTest(cDefine.HIT_AREA_BODY, x, y)) {

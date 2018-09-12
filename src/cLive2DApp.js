@@ -52,7 +52,8 @@ function theRealInit (){
   initEvent();
 
   dragMgr = new L2DTargetPoint();
-  let ratio = currCanvas.height / currCanvas.width;
+  const { width, height } = config.display;
+  let ratio = height / width;
   let left = cDefine.VIEW_LOGICAL_LEFT;
   let right = cDefine.VIEW_LOGICAL_RIGHT;
   let bottom = -ratio;
@@ -68,11 +69,11 @@ function theRealInit (){
     cDefine.VIEW_LOGICAL_MAX_TOP);
 
   projMatrix = new L2DMatrix44();
-  projMatrix.multScale(1, (currCanvas.width / currCanvas.height));
+  projMatrix.multScale(1, (width / height));
 
   deviceToScreen = new L2DMatrix44();
-  deviceToScreen.multTranslate(-currCanvas.width / 2.0, -currCanvas.height / 2.0);  // #32
-  deviceToScreen.multScale(2 / currCanvas.width, -2 / currCanvas.height);  // #32
+  deviceToScreen.multTranslate(-width / 2.0, -height / 2.0);  // #32
+  deviceToScreen.multScale(2 / width, -2 / height);  // #32
 
 
   Live2D.setGL(currWebGL);
@@ -118,6 +119,8 @@ function initEvent(){
     window.addEventListener("touchstart", touchEvent);
     window.addEventListener("touchend", touchEvent);
     window.addEventListener("touchmove", touchEvent);
+    window.addEventListener('deviceorientation', orientEvent, false);
+    // window.addEventListener('devicemotion', accelEvent)
   }
 }
 
@@ -395,6 +398,16 @@ function touchEvent(e)
     } else if (e.type == "touchend") {
         lookFront();
     }
+}
+
+function accelEvent(event) {
+    // const accel = event.acceleration || event.accelerationIncludingGravity
+    // accel && live2DMgr.setAccel(accel.x, accel.y, accel.z)
+    event.rotationRate && live2DMgr.setRotationRate(event.rotationRate)
+}
+
+function orientEvent(event) {
+    live2DMgr.setOrient(event.alpha, event.beta, event.gamma)
 }
 
 function transformViewX(deviceX)
