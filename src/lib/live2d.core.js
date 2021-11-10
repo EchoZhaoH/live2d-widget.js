@@ -4868,28 +4868,6 @@ ao.prototype.setLoopFadeIn = function(aH) {
     this.loopFadeIn = aH;
 }
 ;
-function aE() {
-    this._$P = new Float32Array(100);
-    this.size = 0;
-}
-aE.prototype.clear = function() {
-    this.size = 0;
-}
-;
-aE.prototype.add = function(aI) {
-    if (this._$P.length <= this.size) {
-        var aH = new Float32Array(this.size * 2);
-        P._$jT(this._$P, 0, aH, 0, this.size);
-        this._$P = aH;
-    }
-    this._$P[this.size++] = aI;
-}
-;
-aE.prototype._$BL = function() {
-    var aH = new Float32Array(this.size);
-    P._$jT(this._$P, 0, aH, 0, this.size);
-    return aH;
-}
 ;
 function t() {
     this._$4P = null;
